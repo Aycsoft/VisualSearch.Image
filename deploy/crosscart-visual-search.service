@@ -1,0 +1,20 @@
+[Unit]
+Description=CrossCart product visual search service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=crosscart
+Group=crosscart
+WorkingDirectory=/opt/crosscart/visual-search/service
+EnvironmentFile=/etc/crosscart/visual-search.env
+ExecStart=/opt/crosscart/visual-search/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8100 --workers 1
+Restart=always
+RestartSec=5
+TimeoutStartSec=600
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

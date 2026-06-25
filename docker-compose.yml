@@ -1,0 +1,31 @@
+services:
+  visual-search:
+    build:
+      context: ./service
+    restart: unless-stopped
+    env_file:
+      - path: ./.env
+        required: false
+    environment:
+      VISUAL_SEARCH_DEVICE: cpu
+      VISUAL_SEARCH_STORE_BACKEND: sqlite
+      VISUAL_SEARCH_SQLITE_PATH: /data/visual-search.db
+      VISUAL_SEARCH_CATALOG_ROOT: /catalog
+      VISUAL_SEARCH_CATALOG_ROOTS: /catalog
+      HF_HOME: /models
+    ports:
+      - "127.0.0.1:8100:8100"
+    volumes:
+      - visual-search-data:/data
+      - visual-search-models:/models
+      - ${VISUAL_SEARCH_UPLOAD_ROOT:-F:/Work/FileService.Webapi/FileService.Webapi/upload}:/catalog:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8100/health/live')"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 5m
+
+volumes:
+  visual-search-data:
+  visual-search-models:

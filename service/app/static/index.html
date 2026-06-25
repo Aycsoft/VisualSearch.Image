@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CrossCart 图片识别管理台</title>
+  <style>
+    :root{--bg:#f6f8fb;--card:#fff;--ink:#101828;--muted:#667085;--line:#e4e7ec;--blue:#175cd3;--blue2:#eff8ff;--green:#067647;--red:#b42318;--orange:#b54708}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,"Segoe UI","Microsoft YaHei",Arial,sans-serif}
+    header{padding:28px max(24px,calc((100vw - 1360px)/2));color:#fff;background:linear-gradient(120deg,#102a56,#175cd3 68%,#2e90fa)}
+    h1{margin:0 0 8px;font-size:30px;letter-spacing:-.03em}header p{margin:0;opacity:.86}
+    main{max-width:1360px;margin:22px auto;padding:0 24px 56px}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+    .metric,.card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 10px 28px rgba(16,24,40,.06)}
+    .metric{padding:16px}.metric span{display:block;color:var(--muted);font-size:12px}.metric strong{display:block;margin-top:8px;font-size:22px;overflow-wrap:anywhere}
+    .grid{display:grid;grid-template-columns:390px 1fr;gap:18px;align-items:start}.card{padding:20px}h2{margin:0 0 15px;font-size:18px}
+    label{display:block;margin:12px 0 7px;color:#344054;font-size:13px;font-weight:700}
+    input[type=text],input[type=password],select{width:100%;padding:10px 12px;border:1px solid #d0d5dd;border-radius:10px;background:#fff;color:var(--ink)}
+    button{padding:11px 15px;border:0;border-radius:10px;color:#fff;background:var(--blue);font-weight:800;cursor:pointer}button.secondary{color:var(--blue);background:var(--blue2);border:1px solid #b2ddff}button:disabled{opacity:.55;cursor:not-allowed}
+    .status{display:flex;align-items:center;gap:8px;padding:10px 12px;margin-bottom:14px;border-radius:10px;background:#f2f4f7;font-size:13px}.dot{width:9px;height:9px;border-radius:50%;background:#98a2b3}.dot.ok{background:#12b76a}
+    .check{display:flex;align-items:center;gap:8px;margin:10px 0;font-size:13px}.check input{width:16px;height:16px}.small{color:var(--muted);font-size:12px;line-height:1.65;overflow-wrap:anywhere}.error{color:var(--red)}.ok{color:var(--green)}.warn{color:var(--orange)}
+    .progress{height:8px;overflow:hidden;margin:12px 0 8px;border-radius:999px;background:#eaecf0}.bar{width:0;height:100%;background:#12b76a;transition:width .25s}
+    .drop{min-height:230px;display:grid;place-items:center;padding:20px;border:2px dashed #b2ccf4;border-radius:14px;background:#f8fbff;text-align:center;cursor:pointer}.drop.drag{border-color:var(--blue);background:#eff8ff}.drop img{max-width:100%;max-height:290px;border-radius:12px;object-fit:contain}
+    .actions{display:grid;grid-template-columns:1fr 170px;gap:10px;margin-top:13px}.results{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:13px;margin-top:17px}
+    .result{overflow:hidden;border:1px solid var(--line);border-radius:12px;background:#fff}.result img{display:block;width:100%;aspect-ratio:1/1;object-fit:contain;background:#f2f4f7}.meta{padding:10px}.score{color:var(--green);font-size:19px;font-weight:900}.path{margin-top:5px;color:#475467;font-size:11px;overflow-wrap:anywhere}
+    .empty{grid-column:1/-1;padding:38px;color:var(--muted);text-align:center;border:1px dashed var(--line);border-radius:12px}.table-card{margin-top:18px}.table-head,.pager{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .table-wrap{overflow:auto;margin-top:10px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}th{color:#475467;background:#f9fafb}td.path-cell{max-width:500px;white-space:normal;overflow-wrap:anywhere}.thumb{width:46px;height:46px;object-fit:contain;background:#f2f4f7;border-radius:7px}
+    .pager{justify-content:flex-end;margin-top:14px}.pager button{min-width:76px}.pager select{width:100px;padding:8px}.pager-info{min-width:210px;text-align:center;color:var(--muted);font-size:12px}
+    @media(max-width:960px){.metrics{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}.actions{grid-template-columns:1fr}}@media(max-width:560px){.metrics{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>CrossCart 图片识别管理台</h1>
+    <p>独立维护视觉模型、SQLite 向量索引、upload 图库扫描和现场照片检索。</p>
+  </header>
+
+  <main>
+    <section class="metrics">
+      <div class="metric"><span>已索引图片</span><strong id="indexedCount">—</strong></div>
+      <div class="metric"><span>索引数据库</span><strong id="dbSize">—</strong></div>
+      <div class="metric"><span>向量模型</span><strong id="modelVersion">—</strong></div>
+      <div class="metric"><span>存储后端</span><strong id="backend">—</strong></div>
+    </section>
+
+    <div class="grid">
+      <aside class="card">
+        <h2>图库索引</h2>
+        <div class="status"><span id="dot" class="dot"></span><span id="service">正在检查服务状态…</span></div>
+
+        <label for="apiKey">API Key</label>
+        <input id="apiKey" type="password" placeholder="未启用可留空；生产环境建议填写" />
+        <p class="small">保存于当前浏览器 localStorage，请不要在公共电脑保存生产 Key。</p>
+
+        <label for="prefix">扫描子目录</label>
+        <input id="prefix" type="text" placeholder="留空扫描整个 upload；例如 Product/DevSourcing" />
+        <label class="check"><input id="removeMissing" type="checkbox" checked />同步删除文件夹中已不存在的索引</label>
+        <p class="small">重复点击只处理新增或修改过的图片。未变化图片会直接跳过，不会重新提取向量。</p>
+
+        <button id="scan" class="secondary" style="width:100%">手动更新索引</button>
+        <div class="progress"><div id="bar" class="bar"></div></div>
+        <div id="scanText" class="small">尚未开始</div>
+        <label>SQLite 位置</label><div id="dbLocation" class="small">—</div>
+      </aside>
+
+      <section class="card">
+        <h2>上传查询照片</h2>
+        <label id="drop" class="drop" for="file">
+          <span id="hint"><strong>点击选择或拖入图片</strong><br><span class="small">建议使用仓库现场拍摄、角度不同于图库的照片验证效果。</span></span>
+          <img id="preview" alt="查询图片预览" hidden />
+        </label>
+        <input id="file" type="file" accept="image/jpeg,image/png,image/webp,image/bmp" hidden />
+        <div class="actions">
+          <button id="search" disabled>开始识别</button>
+          <select id="topK"><option value="8">返回 8 个</option><option value="12" selected>返回 12 个</option><option value="20">返回 20 个</option></select>
+        </div>
+        <div id="summary" class="small" style="margin-top:11px"></div>
+        <div id="results" class="results"><div class="empty">建立索引后，选择一张照片开始识别。</div></div>
+      </section>
+    </div>
+
+    <section class="card table-card">
+      <div class="table-head">
+        <div><h2 style="margin-bottom:3px">索引明细</h2><div class="small">分页查看全部已索引图片，确认文件是否录入、分类和更新时间。</div></div>
+        <button id="refresh" class="secondary">刷新状态</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>预览</th><th>文件 / FileId</th><th>产品编码</th><th>分类</th><th>大小</th><th>更新时间</th></tr></thead>
+          <tbody id="assets"><tr><td colspan="6">正在读取…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="pager">
+        <select id="pageSize"><option value="20">20 条/页</option><option value="50" selected>50 条/页</option><option value="100">100 条/页</option></select>
+        <button id="prev" class="secondary">上一页</button>
+        <span id="pageInfo" class="pager-info">第 1 / 1 页</span>
+        <button id="next" class="secondary">下一页</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id)
+    const pick = (obj, a, b) => obj?.[a] ?? obj?.[b]
+    let selectedFile = null, pollTimer = null, currentJobId = null, currentPage = 1, pageSize = 50, totalAssets = 0
+
+    $('apiKey').value = localStorage.getItem('visualSearchApiKey') || ''
+    $('apiKey').addEventListener('change', () => localStorage.setItem('visualSearchApiKey', $('apiKey').value.trim()))
+
+    function headers(json = false) {
+      const result = {}
+      const key = $('apiKey').value.trim()
+      if (key) result['X-API-Key'] = key
+      if (json) result['Content-Type'] = 'application/json'
+      return result
+    }
+
+    async function apiFetch(url, options = {}) {
+      options.headers = { ...(options.headers || {}), ...headers(false) }
+      return fetch(url, options)
+    }
+
+    async function refreshStatus() {
+      try {
+        const offset = (currentPage - 1) * pageSize
+        const [healthResponse, statsResponse, assetsResponse] = await Promise.all([
+          fetch('/health/ready'),
+          apiFetch('/v1/catalog/stats'),
+          apiFetch(`/v1/catalog/assets?offset=${offset}&limit=${pageSize}`)
+        ])
+        if (!healthResponse.ok) throw new Error(await healthResponse.text())
+        if (!statsResponse.ok) throw new Error(await statsResponse.text())
+        if (!assetsResponse.ok) throw new Error(await assetsResponse.text())
+        const health = await healthResponse.json(), stats = await statsResponse.json(), assets = await assetsResponse.json()
+        $('dot').classList.add('ok')
+        $('service').classList.remove('error')
+        $('service').textContent = '视觉检索服务运行正常'
+        $('indexedCount').textContent = (pick(stats, 'indexed_count', 'indexedCount') ?? 0).toLocaleString()
+        $('dbSize').textContent = fmtBytes(pick(stats, 'database_bytes', 'databaseBytes'))
+        $('modelVersion').textContent = pick(stats, 'model_version', 'modelVersion') || pick(health, 'model_version', 'modelVersion') || '—'
+        $('backend').textContent = (pick(stats, 'backend', 'Backend') || '—').toUpperCase()
+        $('dbLocation').textContent = pick(stats, 'location', 'Location') || '—'
+        totalAssets = pick(assets, 'total', 'Total') ?? 0
+        renderAssets(pick(assets, 'items', 'Items') || [])
+        renderPager()
+        const active = pick(stats, 'active_job', 'activeJob')
+        const latest = active || pick(stats, 'latest_job', 'latestJob')
+        if (latest) renderJob(latest)
+        if (active) {
+          const id = pick(active, 'job_id', 'jobId')
+          $('scan').disabled = true
+          if (currentJobId !== id) {
+            currentJobId = id
+            poll(id)
+          }
+        }
+      } catch (e) {
+        $('dot').classList.remove('ok')
+        $('service').textContent = e.message
+        $('service').classList.add('error')
+      }
+    }
+
+    $('scan').onclick = async () => {
+      clearTimeout(pollTimer)
+      $('scan').disabled = true
+      $('scanText').textContent = '正在创建扫描任务…'
+      try {
+        const r = await fetch('/v1/catalog/scan', {
+          method: 'POST',
+          headers: headers(true),
+          body: JSON.stringify({ prefix: $('prefix').value.trim(), remove_missing: $('removeMissing').checked })
+        })
+        if (!r.ok) throw new Error(await r.text())
+        const job = await r.json()
+        currentJobId = pick(job, 'job_id', 'jobId')
+        renderJob(job)
+        poll(currentJobId)
+      } catch (e) {
+        $('scanText').innerHTML = `<span class="error">启动失败：${escapeHtml(e.message)}</span>`
+        $('scan').disabled = false
+      }
+    }
+
+    async function poll(id) {
+      clearTimeout(pollTimer)
+      try {
+        const r = await apiFetch(`/v1/catalog/scan/${encodeURIComponent(id)}`)
+        if (!r.ok) throw new Error(await r.text())
+        const job = await r.json()
+        const status = pick(job, 'status', 'Status')
+        renderJob(job)
+        if (status === 'queued' || status === 'running') {
+          currentJobId = id
+          $('scan').disabled = true
+          pollTimer = setTimeout(() => poll(id), 1200)
+        } else {
+          currentJobId = null
+          $('scan').disabled = false
+          await refreshStatus()
+        }
+      } catch (e) {
+        $('scanText').innerHTML = `<span class="error">读取进度失败：${escapeHtml(e.message)}</span>`
+        pollTimer = setTimeout(() => poll(id), 3000)
+      }
+    }
+
+    $('search').onclick = async () => {
+      if (!selectedFile) return
+      $('search').disabled = true
+      $('search').textContent = '识别中…'
+      $('results').innerHTML = '<div class="empty">正在提取特征并检索图库…</div>'
+      const form = new FormData()
+      form.append('image', selectedFile)
+      form.append('top_k', $('topK').value)
+      const started = performance.now()
+      try {
+        const r = await fetch('/v1/search', { method: 'POST', headers: headers(false), body: form })
+        if (!r.ok) throw new Error(await r.text())
+        const data = await r.json()
+        const matches = pick(data, 'matches', 'Matches') || []
+        $('summary').textContent = `找到 ${matches.length} 个结果 · 模型检索 ${pick(data, 'elapsed_ms', 'elapsedMs')} ms · 总计 ${Math.round(performance.now() - started)} ms`
+        $('results').innerHTML = ''
+        if (!matches.length) {
+          $('results').innerHTML = '<div class="empty">没有找到候选图片，请确认索引已经更新。</div>'
+          return
+        }
+        for (const match of matches) {
+          const ev = (pick(match, 'evidence', 'Evidence') || [])[0] || {}
+          const card = document.createElement('article')
+          card.className = 'result'
+          const img = document.createElement('img')
+          img.loading = 'lazy'
+          img.src = pick(ev, 'image_url', 'imageUrl') || ''
+          img.alt = '相似图库图片'
+          card.appendChild(img)
+          const meta = document.createElement('div')
+          meta.className = 'meta'
+          meta.innerHTML = `<div class="score">${Math.round((pick(match, 'score', 'Score') || 0) * 100)}%</div><div class="path">${escapeHtml(pick(ev, 'file_id', 'fileId') || pick(match, 'product_code', 'productCode') || '')}</div>`
+          card.appendChild(meta)
+          $('results').appendChild(card)
+        }
+      } catch (e) {
+        $('results').innerHTML = `<div class="empty error">识别失败：${escapeHtml(e.message)}</div>`
+      } finally {
+        $('search').disabled = false
+        $('search').textContent = '开始识别'
+      }
+    }
+
+    function renderJob(job) {
+      const total = pick(job, 'total', 'Total') || 0
+      const indexed = pick(job, 'indexed', 'Indexed') || 0
+      const skipped = pick(job, 'skipped', 'Skipped') || 0
+      const failed = pick(job, 'failed', 'Failed') || 0
+      const removed = pick(job, 'removed', 'Removed') || 0
+      const status = pick(job, 'status', 'Status') || 'unknown'
+      const done = indexed + skipped + failed
+      $('bar').style.width = total ? `${Math.min(100, (done * 100) / total)}%` : status === 'running' ? '2%' : '0'
+      const current = pick(job, 'current', 'Current')
+      const time = pick(job, 'completed_at', 'completedAt') || pick(job, 'started_at', 'startedAt') || pick(job, 'created_at', 'createdAt')
+      $('scanText').textContent = `状态：${status}；总数 ${total}；新增/更新 ${indexed}；跳过 ${skipped}；失败 ${failed}；清理 ${removed}${current ? `；当前 ${current}` : ''}${time ? `；时间 ${formatDate(time)}` : ''}`
+    }
+
+    function renderAssets(items) {
+      $('assets').innerHTML = ''
+      if (!items.length) {
+        $('assets').innerHTML = '<tr><td colspan="6">当前还没有索引记录</td></tr>'
+        return
+      }
+      for (const item of items) {
+        const tr = document.createElement('tr')
+        const url = pick(item, 'image_url', 'imageUrl') || ''
+        tr.innerHTML = `<td>${url ? `<img class="thumb" src="${escapeAttr(url)}" alt="">` : '—'}</td><td class="path-cell">${escapeHtml(pick(item, 'file_id', 'fileId') || '')}</td><td>${escapeHtml(pick(item, 'product_code', 'productCode') || '')}</td><td>${escapeHtml(pick(item, 'category', 'Category') || '')}</td><td>${fmtBytes(pick(item, 'file_size', 'fileSize'))}</td><td>${escapeHtml(formatDate(pick(item, 'updated_at', 'updatedAt')))}</td>`
+        $('assets').appendChild(tr)
+      }
+    }
+
+    function choose(file) {
+      if (!file) return
+      selectedFile = file
+      $('preview').src = URL.createObjectURL(file)
+      $('preview').hidden = false
+      $('hint').hidden = true
+      $('search').disabled = false
+      $('summary').textContent = file.name
+    }
+
+    $('file').onchange = (e) => choose(e.target.files[0])
+    ;['dragenter', 'dragover'].forEach((name) => $('drop').addEventListener(name, (e) => { e.preventDefault(); $('drop').classList.add('drag') }))
+    ;['dragleave', 'drop'].forEach((name) => $('drop').addEventListener(name, (e) => { e.preventDefault(); $('drop').classList.remove('drag') }))
+    $('drop').addEventListener('drop', (e) => choose(e.dataTransfer.files[0]))
+    $('refresh').onclick = refreshStatus
+    $('prev').onclick = () => { if (currentPage > 1) { currentPage--; refreshStatus() } }
+    $('next').onclick = () => { if (currentPage * pageSize < totalAssets) { currentPage++; refreshStatus() } }
+    $('pageSize').onchange = () => { pageSize = Number($('pageSize').value); currentPage = 1; refreshStatus() }
+
+    function renderPager() {
+      const pages = Math.max(1, Math.ceil(totalAssets / pageSize))
+      if (currentPage > pages) currentPage = pages
+      $('pageInfo').textContent = `第 ${currentPage} / ${pages} 页，共 ${totalAssets.toLocaleString()} 条`
+      $('prev').disabled = currentPage <= 1
+      $('next').disabled = currentPage >= pages
+    }
+
+    function fmtBytes(n) { return n == null ? '—' : n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} KB` : n < 1073741824 ? `${(n / 1048576).toFixed(1)} MB` : `${(n / 1073741824).toFixed(2)} GB` }
+    function formatDate(value) { if (!value) return '—'; const d = new Date(value); return Number.isNaN(d.getTime()) ? value : d.toLocaleString('zh-CN') }
+    function escapeHtml(value) { const d = document.createElement('div'); d.textContent = value ?? ''; return d.innerHTML }
+    function escapeAttr(value) { return escapeHtml(value).replaceAll('"', '&quot;') }
+
+    refreshStatus()
+    setInterval(refreshStatus, 15000)
+  </script>
+</body>
+</html>

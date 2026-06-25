@@ -1,0 +1,5 @@
+services:
+  visual-search:
+    environment:
+      VISUAL_SEARCH_DEVICE: cuda
+    gpus: all

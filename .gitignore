@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.py[cod]
+.env
+
+data/models/
+data/sqlite/*.db
+data/sqlite/*.db-shm
+data/sqlite/*.db-wal
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
