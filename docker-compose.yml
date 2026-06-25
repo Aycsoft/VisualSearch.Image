@@ -12,6 +12,7 @@ services:
       VISUAL_SEARCH_SQLITE_PATH: /data/visual-search.db
       VISUAL_SEARCH_CATALOG_ROOT: /catalog
       VISUAL_SEARCH_CATALOG_ROOTS: /catalog
+      VISUAL_SEARCH_ALLOW_REMOVE_MISSING: "false"
       HF_HOME: /models
     ports:
       - "127.0.0.1:8100:8100"

@@ -87,12 +87,55 @@ sudo systemctl enable --now visualsearch-image
 | `VISUAL_SEARCH_SQLITE_PATH` | SQLite 数据库路径 | `/data/visual-search.db` |
 | `VISUAL_SEARCH_CATALOG_ROOT` | 单图库根目录 | - |
 | `VISUAL_SEARCH_CATALOG_ROOTS` | 多图库根目录（分号分隔） | - |
+| `VISUAL_SEARCH_ALLOW_REMOVE_MISSING` | 是否允许扫描时删除文件夹中已不存在的旧索引，默认必须关闭 | `false` |
 | `VISUAL_SEARCH_API_KEY` | API 认证密钥（可选） | - |
 | `VISUAL_SEARCH_MODEL_ID` | DINOv2 模型名称 | `facebook/dinov2-base` |
 | `VISUAL_SEARCH_MODEL_VERSION` | 模型版本标识 | `dinov2-base-v1` |
 | `HF_HOME` | 模型缓存目录 | `/models` |
 | `HF_ENDPOINT` | HuggingFace 镜像地址，可选。网络能访问官方 HuggingFace 时不要设置。 | 空 |
 | `VISUAL_SEARCH_PUBLIC_IMAGE_BASE_URL` | 图片访问 URL 前缀 | `/v1/catalog/image?path=` |
+
+### 图片目录配置重点
+
+视觉服务部署目录和图片目录可以完全不同。例如服务器上：
+
+```text
+E:\websit\VisualSearch       视觉服务部署目录
+E:\FileService\upload        FileService 上传图片目录
+```
+
+这种情况下配置必须指向图片目录，不是部署目录：
+
+```text
+VISUAL_SEARCH_CATALOG_ROOT=E:\FileService\upload
+VISUAL_SEARCH_CATALOG_ROOTS=E:\FileService\upload
+```
+
+多个图片目录用英文分号分隔：
+
+```text
+VISUAL_SEARCH_CATALOG_ROOTS=E:\FileService\upload;D:\OtherUpload;F:\ArchiveUpload
+```
+
+管理台的“图库根目录”会显示当前服务实际读取的目录，用于确认配置是否生效。
+
+### 防止误删索引
+
+默认情况下，更新索引只做新增/更新/跳过，不删除旧索引。即使管理台勾选“同步删除文件夹中已不存在的索引”，服务端也会因为：
+
+```text
+VISUAL_SEARCH_ALLOW_REMOVE_MISSING=false
+```
+
+而拒绝删除。
+
+只有在你确认 `VISUAL_SEARCH_CATALOG_ROOTS` 已经指向正确 upload 目录，并且确实要清理已经从磁盘删除的图片时，才可以改成：
+
+```text
+VISUAL_SEARCH_ALLOW_REMOVE_MISSING=true
+```
+
+另外，扫描子目录时永远不会执行删除清理；清理只能在全量扫描时执行，避免不同目录、不同机器部署时误删全库索引。
 
 ## API 接口
 

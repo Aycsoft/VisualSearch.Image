@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated
-from urllib.parse import quote
+from urllib.parse import parse_qs, quote, unquote, urlparse
 from uuid import NAMESPACE_URL, uuid4, uuid5
 
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile, status
@@ -100,7 +100,7 @@ class BatchIndexResponse(BaseModel):
 
 class CatalogScanRequest(BaseModel):
     prefix: str = ""
-    remove_missing: bool = True
+    remove_missing: bool = False
 
 
 class CatalogScanResponse(BaseModel):
@@ -116,7 +116,7 @@ class CatalogScanResponse(BaseModel):
     started_at: str | None = None
     completed_at: str | None = None
     prefix: str = ""
-    remove_missing: bool = True
+    remove_missing: bool = False
     created_at: str | None = None
 
 
@@ -130,6 +130,7 @@ class CatalogStatsResponse(BaseModel):
     database_bytes: int | None = None
     last_updated_at: str | None = None
     vector_dimension: int | None = None
+    catalog_roots: list[str] = []
     active_job: CatalogScanResponse | None = None
     latest_job: CatalogScanResponse | None = None
 
@@ -175,6 +176,24 @@ def configured_catalog_roots(settings: Settings) -> list[Path]:
     return roots
 
 
+def catalog_image_url(file_id: str, image_url: str | None, settings: Settings) -> str | None:
+    """Return an image URL that works after moving the service or upload root."""
+    if image_url:
+        parsed = urlparse(image_url)
+        if parsed.path.endswith("/api/visual-search/demo/image") or parsed.path.endswith("/v1/catalog/image"):
+            path_value = parse_qs(parsed.query).get("path", [""])[0]
+            if path_value:
+                return f"{settings.public_image_base_url}{quote(path_value, safe='')}"
+        if parsed.scheme in {"http", "https"}:
+            return image_url
+        if image_url.startswith("/v1/catalog/image?path="):
+            return image_url
+    suffix = Path(file_id).suffix.lower()
+    if suffix in {".jpg", ".jpeg", ".jfif", ".png", ".webp", ".bmp"}:
+        return f"{settings.public_image_base_url}{quote(file_id, safe='')}"
+    return image_url
+
+
 @app.post("/v1/search", response_model=SearchResponse, dependencies=[Depends(require_api_key)])
 async def search(
     image: Annotated[UploadFile, File()],
@@ -198,7 +217,11 @@ async def search(
             product_code=result.product_code,
             score=result.score,
             confidence=confidence(result.score, settings),
-            evidence=[EvidenceResponse(**item.__dict__) for item in result.evidence],
+            evidence=[EvidenceResponse(
+                file_id=item.file_id,
+                image_url=catalog_image_url(item.file_id, item.image_url, settings),
+                score=item.score,
+            ) for item in result.evidence],
         ) for result in matches],
     )
 
@@ -373,9 +396,18 @@ def run_catalog_scan(job_id: str, prefix: str, remove_missing: bool,
                 job["failed"] = int(job["failed"]) + len(decoded)
                 logger.exception("Catalog batch failed at %s", job.get("current"))
                 runtime.store.save_scan_job(job)
-        if remove_missing:
+        if remove_missing and not settings.allow_remove_missing:
+            logger.warning("Skip remove_missing because VISUAL_SEARCH_ALLOW_REMOVE_MISSING is false")
+            job["error"] = "服务端未开启 VISUAL_SEARCH_ALLOW_REMOVE_MISSING，已跳过缺失索引清理。"
+        elif remove_missing and prefix:
+            logger.warning("Skip remove_missing for prefix scan: %s", prefix)
+            job["error"] = "为了避免误删，扫描子目录时不会执行缺失索引清理；请全量扫描时再清理。"
+        elif remove_missing and files:
             missing = sorted(set(existing) - seen_file_ids)
             job["removed"] = runtime.store.delete_file_ids(missing, settings.model_version)
+        elif remove_missing and not files:
+            logger.warning("Skip remove_missing because scan found zero files")
+            job["error"] = "扫描到 0 张图片，已跳过缺失索引清理，避免误删。"
         job.update(
             status="completed",
             current=None,
@@ -444,7 +476,12 @@ async def catalog_stats(settings: Settings = Depends(get_settings)) -> CatalogSt
                    if item["status"] in {"queued", "running"}), None)
     latest_data = await run_in_threadpool(runtime.store.latest_scan_job)
     latest = CatalogScanResponse(**latest_data) if latest_data else None
-    return CatalogStatsResponse(**result, active_job=active, latest_job=latest)
+    return CatalogStatsResponse(
+        **result,
+        catalog_roots=[str(path) for path in configured_catalog_roots(settings)],
+        active_job=active,
+        latest_job=latest,
+    )
 
 
 @app.get("/v1/catalog/assets", response_model=CatalogAssetsResponse,
@@ -458,6 +495,9 @@ async def catalog_assets(
         raise HTTPException(status_code=422, detail="offset or limit is out of range")
     items = await run_in_threadpool(
         runtime.store.list_assets, settings.model_version, offset, limit)
+    for item in items:
+        item["image_url"] = catalog_image_url(
+            str(item.get("file_id") or ""), item.get("image_url"), settings)
     stats = await run_in_threadpool(runtime.store.stats, settings.model_version)
     return CatalogAssetsResponse(
         offset=offset, limit=limit, total=int(stats["indexed_count"]), items=items)
@@ -483,6 +523,7 @@ async def catalog_scan_status(job_id: str) -> CatalogScanResponse:
 
 @app.get("/v1/catalog/image", include_in_schema=False)
 async def catalog_image(path: str, settings: Settings = Depends(get_settings)) -> FileResponse:
+    path = unquote(path).replace("\\", "/").lstrip("/")
     for root in configured_catalog_roots(settings):
         target = (root / path).resolve()
         if target != root and root not in target.parents:
@@ -490,6 +531,11 @@ async def catalog_image(path: str, settings: Settings = Depends(get_settings)) -
         if target.is_file():
             return FileResponse(target)
     raise HTTPException(status_code=404, detail="图片不存在")
+
+
+@app.get("/api/visual-search/demo/image", include_in_schema=False)
+async def legacy_catalog_image(path: str, settings: Settings = Depends(get_settings)) -> FileResponse:
+    return await catalog_image(path, settings)
 
 
 @app.delete("/v1/index/products/{product_id}", status_code=204,

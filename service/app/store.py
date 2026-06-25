@@ -566,7 +566,7 @@ class SqliteVectorStore:
                        updated_at=excluded.updated_at""",
                 (
                     job["job_id"], job["status"], job.get("prefix", ""),
-                    1 if job.get("remove_missing", True) else 0,
+                    1 if job.get("remove_missing", False) else 0,
                     job.get("total", 0), job.get("indexed", 0), job.get("skipped", 0),
                     job.get("failed", 0), job.get("removed", 0), job.get("current"),
                     job.get("error"), job.get("started_at"), job.get("completed_at"),

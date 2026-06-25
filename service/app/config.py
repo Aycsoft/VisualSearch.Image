@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     torch_threads: int = Field(default=4, ge=1, le=64)
     catalog_root: str = "/catalog"
     catalog_roots: str = ""
+    allow_remove_missing: bool = False
     public_image_base_url: str = "/v1/catalog/image?path="
 
     @property

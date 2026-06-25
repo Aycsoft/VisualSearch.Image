@@ -53,12 +53,13 @@
 
         <label for="prefix">扫描子目录</label>
         <input id="prefix" type="text" placeholder="留空扫描整个 upload；例如 Product/DevSourcing" />
-        <label class="check"><input id="removeMissing" type="checkbox" checked />同步删除文件夹中已不存在的索引</label>
-        <p class="small">重复点击只处理新增或修改过的图片。未变化图片会直接跳过，不会重新提取向量。</p>
+        <label class="check"><input id="removeMissing" type="checkbox" />同步删除文件夹中已不存在的索引</label>
+        <p class="small">默认只增量新增/更新，不删除旧索引。只有确认 upload 根目录配置正确、并且要清理已删除图片时，才勾选同步删除。</p>
 
         <button id="scan" class="secondary" style="width:100%">手动更新索引</button>
         <div class="progress"><div id="bar" class="bar"></div></div>
         <div id="scanText" class="small">尚未开始</div>
+        <label>图库根目录</label><div id="catalogRoots" class="small">—</div>
         <label>SQLite 位置</label><div id="dbLocation" class="small">—</div>
       </aside>
 
@@ -139,6 +140,7 @@
         $('modelVersion').textContent = pick(stats, 'model_version', 'modelVersion') || pick(health, 'model_version', 'modelVersion') || '—'
         $('backend').textContent = (pick(stats, 'backend', 'Backend') || '—').toUpperCase()
         $('dbLocation').textContent = pick(stats, 'location', 'Location') || '—'
+        $('catalogRoots').textContent = (pick(stats, 'catalog_roots', 'catalogRoots') || []).join('；') || '—'
         totalAssets = pick(assets, 'total', 'Total') ?? 0
         renderAssets(pick(assets, 'items', 'Items') || [])
         renderPager()
