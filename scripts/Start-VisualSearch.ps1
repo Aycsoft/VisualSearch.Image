@@ -60,7 +60,7 @@ if (-not (Test-Http $healthUrl)) {
     $env:VISUAL_SEARCH_MODEL_ID = 'facebook/dinov2-base'
     $env:VISUAL_SEARCH_MODEL_VERSION = 'dinov2-base-v1'
     $env:VISUAL_SEARCH_PUBLIC_IMAGE_BASE_URL = '/v1/catalog/image?path='
-    $env:HF_ENDPOINT = 'https://hf-mirror.com'
+    Remove-Item Env:\HF_ENDPOINT -ErrorAction SilentlyContinue
     $env:HF_HOME = $modelCache
     Start-Process -FilePath $python -WorkingDirectory $serviceRoot -WindowStyle Hidden `
         -ArgumentList '-m','uvicorn','app.main:app','--host',$HostName,'--port',"$Port"

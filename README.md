@@ -91,7 +91,7 @@ sudo systemctl enable --now visualsearch-image
 | `VISUAL_SEARCH_MODEL_ID` | DINOv2 模型名称 | `facebook/dinov2-base` |
 | `VISUAL_SEARCH_MODEL_VERSION` | 模型版本标识 | `dinov2-base-v1` |
 | `HF_HOME` | 模型缓存目录 | `/models` |
-| `HF_ENDPOINT` | HuggingFace 镜像地址 | `https://hf-mirror.com` |
+| `HF_ENDPOINT` | HuggingFace 镜像地址，可选。网络能访问官方 HuggingFace 时不要设置。 | 空 |
 | `VISUAL_SEARCH_PUBLIC_IMAGE_BASE_URL` | 图片访问 URL 前缀 | `/v1/catalog/image?path=` |
 
 ## API 接口
