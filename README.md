@@ -274,7 +274,7 @@ ORDER BY count DESC;
 
 ## 开源协议
 
-[MIT License](LICENSE)
+[MIT License](LICENSE) © 2026 Aycsoft VisualSearch.Image Contributors
 
 ## 贡献指南
 
