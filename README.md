@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/license-MIT-yellow)](LICENSE)
 
 Creator.基于 DINOv2 的轻量级视觉搜索服务，用于图片向量化提取与相似图像检索。
-实现图片识别，以图识图，图像搜索，图像匹对功能。
+实现图片识别，以图识图，图像搜索，图像匹对功能。模型aycsoft-i1
 
 ## 特性
 
